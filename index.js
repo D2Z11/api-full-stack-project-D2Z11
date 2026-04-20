@@ -38,7 +38,7 @@ setInterval(function (){
   // console.log(serverPlayerStats)
   updatePlayerPositions()
   updateAllBullets()
-}, 16)
+}, 1)
 
 io.on('connection', (socket) => {
   socket.on('addPlayer', (obj) => {

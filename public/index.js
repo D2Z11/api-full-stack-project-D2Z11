@@ -88,7 +88,6 @@ function renderPlayers(playerServerSideObj) {
 function updateBullets() {
   for (var z = 0; z < playerStats["bullets"].length; z++) {
     let bullet = playerStats["bullets"][z]
-    // help using AI
     bullet["x"] += bullet.speed * Math.cos(bullet.angle);
     bullet["y"] += bullet.speed * Math.sin(bullet.angle);
   }
@@ -129,7 +128,7 @@ function draw() {
 var updatePlayer = setInterval(() => {
   updateBullets()
   socket.emit("updatePlayer", {"user": username, "player": playerStats})
-}, 16)
+}, 1)
 
 function mouseClicked() {
   if (scene == 'lobby') {
