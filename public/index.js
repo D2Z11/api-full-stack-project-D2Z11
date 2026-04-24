@@ -15,14 +15,24 @@ function setup() {
   startScreen();
 }
 
+// function addPlayer() {
+//   username = input.value();
+//   socket.emit("addPlayer", { "user": username })
+//   removeElements(input, button);
+//   scene = 'lobby'
+//   playerStats["x"] = 50;
+//   playerStats["y"] = 50;
+//   socket.emit("updatePlayer", { "user": username, "player": playerStats })
+// }
+
 function addPlayer() {
-  username = input.value();
-  socket.emit("addPlayer", { "user": username })
+  username = "Player" + Math.floor(Math.random() * 10000);
+  socket.emit("addPlayer", { "user": username });
   removeElements(input, button);
-  scene = 'lobby'
+  scene = 'lobby';
   playerStats["x"] = 50;
   playerStats["y"] = 50;
-  socket.emit("updatePlayer", { "user": username, "player": playerStats })
+  socket.emit("updatePlayer", { "user": username, "player": playerStats });
 }
 
 function startScreen() {
@@ -45,6 +55,28 @@ function calculateDirectionFacing(x, y, mouseCords) {
   return realangle
 }
 
+function drawHealthBar(x, y, health, maxHealth = 100) {
+  let barWidth = 40;
+  let barHeight = 8;
+  let healthPercent = health / maxHealth;
+  
+  // Background (red)
+  push();
+  fill(255, 0, 0);
+  rect(x - barWidth / 2, y - 50, barWidth, barHeight);
+  
+  // Health (green)
+  fill(0, 255, 0);
+  rect(x - barWidth / 2, y - 50, barWidth * healthPercent, barHeight);
+  
+  // Border
+  stroke(0);
+  strokeWeight(1);
+  noFill();
+  rect(x - barWidth / 2, y - 50, barWidth, barHeight);
+  pop();
+}
+
 function drawPlayer(x, y, d, mouseCords) {
   push();
   translate(x, y)
@@ -60,7 +92,7 @@ function drawPlayer(x, y, d, mouseCords) {
   // if (holdingGun)
 }
 
-function drawBullet(x, y, angle) {
+function drawBullet(x, y) {
   rect(x, y, 10, 10);
 }
 
@@ -75,6 +107,8 @@ function renderPlayers(playerServerSideObj) {
     // render username
     textSize(20)
     text(users[i], stats[i]['x'], stats[i]['y'] - 30)
+    // render health bar
+    drawHealthBar(stats[i]['x'], stats[i]['y'], stats[i]['health'], 100)
     // render player
     drawPlayer(stats[i]['x'], stats[i]['y'], 40, [stats[i]['mouseX'], stats[i]['mouseY']])
     // TODO: add rotation for bullet
@@ -121,6 +155,13 @@ function draw() {
   renderPlayers(playersOnServerSide)
   if (scene === 'lobby') {
     showLobby();
+  } else if (scene === 'dead') {
+    background(0);
+    fill(255, 0, 0);
+    textSize(60);
+    textAlign(CENTER, CENTER);
+    text("You died!", width / 2, height / 2);
+    return;
   }
   // socket.emit("updatePlayer", { "user": username, "player": playerStats })
 }
@@ -128,13 +169,13 @@ function draw() {
 var updatePlayer = setInterval(() => {
   updateBullets()
   socket.emit("updatePlayer", {"user": username, "player": playerStats})
-}, 1)
+}, 30)
 
 function mouseClicked() {
   if (scene == 'lobby') {
     // [x, y, speed, angleInRadians]
     let facing = calculateDirectionFacing(playerStats["x"], playerStats["y"], [mouseX, mouseY])
-    console.log(facing)
+    // console.log(facing)
     let bulletObj = {
       x: playerStats["x"],
       y: playerStats["y"],
@@ -148,10 +189,17 @@ function mouseClicked() {
 
 socket.on("update", function(playerServerSideObj) {
   playersOnServerSide = playerServerSideObj
-})
+  if (!(username in playersOnServerSide) && scene == 'lobby') {
+    clearInterval(updatePlayer);
+    scene = 'dead';
+  }
+});
 
 window.addEventListener('beforeunload', ((e) => {
   clearInterval(updatePlayer)
   socket.emit('removePlayer', {"user": username})
   return null
 }))
+
+//debug
+addPlayer()

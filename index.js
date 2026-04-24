@@ -24,6 +24,7 @@ function updateAllBullets() {
   let users = Object.keys(serverPlayerStats)
   
   for (var i = 0; i < users.length; i++) {
+    if (!serverPlayerStats[users[i]]) continue;  // Add this check
     let playerBullets = serverPlayerStats[users[i]]["bullets"]
     
     // Filter out bullets that are out of bounds (help of AI)
@@ -34,11 +35,70 @@ function updateAllBullets() {
   }
 }
 
+function checkCollisions() {
+  let users = Object.keys(serverPlayerStats)
+
+  for (var i = 0; i < users.length; i++) {
+    let shooter = users[i]
+    if (!serverPlayerStats[shooter]) continue
+    
+    let playerBullets = serverPlayerStats[shooter].bullets
+
+    for (var z = 0; z < playerBullets.length; z++) {
+      let bullet = playerBullets[z]
+      let currentUsers = Object.keys(serverPlayerStats)
+      
+      for (var j = 0; j < currentUsers.length; j++) {
+        let target = currentUsers[j]
+        if (shooter === target) continue
+        
+        if (!serverPlayerStats[target]) continue
+        
+        let playerX = serverPlayerStats[target].x
+        let playerY = serverPlayerStats[target].y
+        
+        if (playerX == null || playerY == null) continue
+        
+        if (bullet.x >= playerX - 20 && bullet.x <= playerX + 20 &&
+            bullet.y >= playerY - 20 && bullet.y <= playerY + 20) {
+          decreasePlayerHealth(target)
+          playerBullets.splice(z, 1)
+          z--
+          break
+        }
+      }
+    }
+  }
+}
+
+// Increase interval from 1ms to 30ms
 setInterval(function (){
-  // console.log(serverPlayerStats)
+  const healthArray = Object.values(serverPlayerStats).map(player => player.health);
+  console.log("Player health:", healthArray);
   updatePlayerPositions()
   updateAllBullets()
-}, 1)
+  checkCollisions()
+}, 30)  // Changed from 1 to 30
+
+function decreasePlayerHealth(user) {
+  serverPlayerStats[user]["health"] -= 10
+  if (serverPlayerStats[user]["health"] <= 0) {
+    // to lazy to "optimize" this
+    delete serverPlayerStats[user]
+    io.sockets.emit("update", serverPlayerStats);
+    // io.sockets.emit("playerDied", user)
+    return;
+  }
+}
+
+// Increase interval from 1ms to 30ms
+setInterval(function (){
+  const healthArray = Object.values(serverPlayerStats).map(player => player.health);
+  console.log("Player health:", healthArray);
+  updatePlayerPositions()
+  updateAllBullets()
+  checkCollisions()
+}, 30)  // Changed from 1 to 30
 
 io.on('connection', (socket) => {
   socket.on('addPlayer', (obj) => {
@@ -47,17 +107,32 @@ io.on('connection', (socket) => {
     if (userList.includes(user)) {
       return false
     }
-    serverPlayerStats[user] = {x: null, y: null, holdingWeapon: false, mouseX: null, mouseY: null, bullets: []}
+    serverPlayerStats[user] = {
+      x: Math.floor(Math.random() * 50) + 25,
+      y: Math.floor(Math.random() * 50) + 25,
+      holdingWeapon: false,
+      mouseX: null,
+      mouseY: null,
+      bullets: [],
+      health: 100
+    }
   });
 
   socket.on('updatePlayer', (obj) => {
-    serverPlayerStats[obj["user"]] = obj["player"]
-  })
+    let user = obj["user"];
+    if (!serverPlayerStats[user]) return;
+    // Only update position, mouse, bullets, etc. but NOT health from client
+    serverPlayerStats[user].x = obj["player"].x;
+    serverPlayerStats[user].y = obj["player"].y;
+    serverPlayerStats[user].mouseX = obj["player"].mouseX;
+    serverPlayerStats[user].mouseY = obj["player"].mouseY;
+    serverPlayerStats[user].bullets = obj["player"].bullets;
+});
 
   socket.on('removePlayer', (obj) => {
-    console.log(obj["user"])
+    // console.log(obj["user"])
     delete serverPlayerStats[obj["user"]]
-    console.log(serverPlayerStats)
+    // console.log(serverPlayerStats)
   })
 });
 
