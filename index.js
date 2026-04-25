@@ -74,7 +74,7 @@ function checkCollisions() {
 // Increase interval from 1ms to 30ms
 setInterval(function (){
   const healthArray = Object.values(serverPlayerStats).map(player => player.health);
-  console.log("Player health:", healthArray);
+  console.log(serverPlayerStats);
   updatePlayerPositions()
   updateAllBullets()
   checkCollisions()
@@ -94,7 +94,8 @@ function decreasePlayerHealth(user) {
 // Increase interval from 1ms to 30ms
 setInterval(function (){
   const healthArray = Object.values(serverPlayerStats).map(player => player.health);
-  console.log("Player health:", healthArray);
+  // console.log("Player health:", healthArray);
+  console.log(serverPlayerStats);
   updatePlayerPositions()
   updateAllBullets()
   checkCollisions()
@@ -116,6 +117,7 @@ io.on('connection', (socket) => {
       bullets: [],
       health: 100
     }
+    socket.emit('playerConfirmed', { user: user });
   });
 
   socket.on('updatePlayer', (obj) => {

@@ -2,6 +2,7 @@ const socket = io()
 
 let frames;
 let username;
+let playerConfirmed = false;
 let playersOnServerSide = {};
 let playerStats = { x: null, y: null, holdingWeapon: false, mouseX: null, mouseY: null, bullets: [] }
 var scene = 'startScreen';
@@ -15,25 +16,23 @@ function setup() {
   startScreen();
 }
 
-// function addPlayer() {
-//   username = input.value();
-//   socket.emit("addPlayer", { "user": username })
-//   removeElements(input, button);
-//   scene = 'lobby'
-//   playerStats["x"] = 50;
-//   playerStats["y"] = 50;
-//   socket.emit("updatePlayer", { "user": username, "player": playerStats })
-// }
-
 function addPlayer() {
-  username = "Player" + Math.floor(Math.random() * 10000);
-  socket.emit("addPlayer", { "user": username });
+  username = input.value();
+  socket.emit("addPlayer", { "user": username })
   removeElements(input, button);
-  scene = 'lobby';
   playerStats["x"] = 50;
   playerStats["y"] = 50;
-  socket.emit("updatePlayer", { "user": username, "player": playerStats });
 }
+
+// function addPlayer() {
+//   username = "Player" + Math.floor(Math.random() * 10000);
+//   socket.emit("addPlayer", { "user": username });
+//   removeElements(input, button);
+//   scene = 'lobby';
+//   playerStats["x"] = 50;
+//   playerStats["y"] = 50;
+//   socket.emit("updatePlayer", { "user": username, "player": playerStats });
+// }
 
 function startScreen() {
   greeting = createElement('h2', 'Choose a username and spawn in!');
@@ -168,7 +167,9 @@ function draw() {
 
 var updatePlayer = setInterval(() => {
   updateBullets()
-  socket.emit("updatePlayer", {"user": username, "player": playerStats})
+  if (scene === 'lobby') {
+    socket.emit("updatePlayer", { "user": username, "player": playerStats })
+  }
 }, 30)
 
 function mouseClicked() {
@@ -187,9 +188,15 @@ function mouseClicked() {
   }
 }
 
+socket.on("playerConfirmed", (obj) => {
+  playerConfirmed = true;
+  scene = 'lobby';
+  socket.emit("updatePlayer", { "user": username, "player": playerStats });
+});
+
 socket.on("update", function(playerServerSideObj) {
   playersOnServerSide = playerServerSideObj
-  if (!(username in playersOnServerSide) && scene == 'lobby') {
+  if (playerConfirmed && !(username in playersOnServerSide) && scene == 'lobby') {
     clearInterval(updatePlayer);
     scene = 'dead';
   }
@@ -200,6 +207,3 @@ window.addEventListener('beforeunload', ((e) => {
   socket.emit('removePlayer', {"user": username})
   return null
 }))
-
-//debug
-addPlayer()
